@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Priorización Clínicas – Turnero y Pantalla | Salud Digna</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1a202c;font-size:14px}
+
+.header{background:#139861;color:#fff;padding:16px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.header h1{font-size:18px;font-weight:700;line-height:1.2}
+.header p{font-size:12px;opacity:.85;margin-top:3px}
+.badges{display:flex;gap:8px;flex-wrap:wrap}
+.badge{padding:4px 14px;border-radius:20px;font-size:12px;font-weight:700}
+.badge-yellow{background:#EFB337;color:#2d2d2d}
+.badge-white{background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.4)}
+
+/* TABS */
+.tabs{background:#fff;border-bottom:1px solid #e2e8f0;display:flex;padding:0 28px;gap:0}
+.tab{padding:12px 20px;font-size:13px;font-weight:500;color:#718096;cursor:pointer;border-bottom:3px solid transparent;transition:all .2s}
+.tab:hover{color:#139861}
+.tab.active{color:#139861;border-bottom-color:#139861}
+
+.page{display:none;padding:20px 28px 32px}
+.page.active{display:block}
+
+/* CRITERIO BOX */
+.criterio-box{background:#fff;border-radius:10px;border-left:5px solid #139861;padding:20px 24px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.criterio-box h2{font-size:15px;font-weight:700;color:#139861;margin-bottom:12px}
+.criterio-box p{font-size:13px;color:#4a5568;line-height:1.7;margin-bottom:8px}
+.criterio-box p:last-child{margin-bottom:0}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:14px 0}
+.step{background:#f7fdf9;border:1px solid #c6f6d5;border-radius:8px;padding:14px 16px}
+.step-num{width:26px;height:26px;border-radius:50%;background:#139861;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-bottom:8px}
+.step h4{font-size:12px;font-weight:700;color:#276749;margin-bottom:4px}
+.step p{font-size:12px;color:#4a5568;line-height:1.5}
+.formula{background:#1a202c;color:#68d391;font-family:monospace;font-size:13px;padding:10px 16px;border-radius:6px;margin:10px 0}
+.highlight-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+.hl{background:#fffbeb;border:1px solid #fbd38d;border-radius:8px;padding:10px 14px;text-align:center}
+.hl strong{display:block;font-size:20px;font-weight:700;color:#c05621}
+.hl span{font-size:11px;color:#744210}
+
+/* KPIS */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.kpi{background:#fff;border-radius:10px;padding:14px 18px;border-left:4px solid #139861;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.kpi.am{border-left-color:#EFB337}
+.kpi.bl{border-left-color:#3b82f6}
+.kpi.re{border-left-color:#ef4444}
+.kpi-label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#718096;margin-bottom:5px}
+.kpi-val{font-size:26px;font-weight:700;color:#1a202c;line-height:1}
+.kpi-sub{font-size:11px;color:#a0aec0;margin-top:3px}
+
+/* CHARTS */
+.charts-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.charts-1{margin-bottom:20px}
+.card{background:#fff;border-radius:10px;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.card h3{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#4a5568;margin-bottom:14px}
+
+/* TABLE */
+.table-controls{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px}
+.search-wrap{display:flex;gap:8px;flex-wrap:wrap}
+input[type=text]{border:1px solid #e2e8f0;border-radius:6px;padding:6px 12px;font-size:13px;outline:none;width:220px}
+input[type=text]:focus{border-color:#139861}
+select{border:1px solid #e2e8f0;border-radius:6px;padding:6px 10px;font-size:13px;outline:none;background:#fff;cursor:pointer}
+select:focus{border-color:#139861}
+.results-count{font-size:12px;color:#718096}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{background:#f7fafc;padding:9px 10px;text-align:left;font-weight:600;color:#4a5568;font-size:11px;text-transform:uppercase;letter-spacing:.4px;border-bottom:2px solid #e2e8f0;white-space:nowrap;cursor:pointer;user-select:none}
+thead th:hover{background:#edf2f7;color:#139861}
+thead th.sorted{color:#139861}
+tbody tr{border-bottom:1px solid #f0f4f8;transition:background .12s}
+tbody tr:hover{background:#f7fff9}
+td{padding:8px 10px;color:#2d3748;vertical-align:middle}
+td.rank{font-weight:700;text-align:center;font-size:12px}
+td.name{font-weight:500;max-width:220px}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+
+.bar-inline{display:flex;align-items:center;gap:6px;justify-content:flex-end}
+.bar-bg{background:#e2e8f0;border-radius:3px;height:5px;width:60px;flex-shrink:0}
+.bar-fill{height:5px;border-radius:3px}
+.bg-green{background:#139861}.bg-amber{background:#EFB337}
+
+.tier{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;white-space:nowrap}
+.tier-1{background:#fce8e8;color:#9b1c1c}
+.tier-2{background:#fff3cd;color:#854d0e}
+.tier-3{background:#d1fae5;color:#065f46}
+.tier-4{background:#e0f2fe;color:#075985}
+
+.pill{background:#f0fdf4;color:#166534;font-weight:700;font-size:11px;padding:2px 7px;border-radius:10px;border:1px solid #bbf7d0}
+
+.pag{display:flex;align-items:center;gap:8px;margin-top:14px;justify-content:flex-end;flex-wrap:wrap}
+.pag button{border:1px solid #e2e8f0;background:#fff;padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;transition:all .15s}
+.pag button:hover{background:#f0fdf4;border-color:#139861;color:#139861}
+.pag button.active{background:#139861;color:#fff;border-color:#139861}
+.pag button:disabled{opacity:.4;cursor:default}
+.pag-info{font-size:12px;color:#718096}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>Priorización de Clínicas — Turnero y Pantalla en Sala de Espera</h1>
+    <p>Salud Digna · Análisis de quejas por tiempo de espera vs. volumen de estudios</p>
+  </div>
+  <div class="badges">
+    <span class="badge badge-yellow">256 Clínicas</span>
+    <span class="badge badge-white">Top 70 prioritarias</span>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="showPage('resumen')">Resumen ejecutivo</div>
+  <div class="tab" onclick="showPage('graficas')">Gráficas</div>
+  <div class="tab" onclick="showPage('tabla')">Todas las clínicas</div>
+</div>
+
+<!-- PAGE 1: RESUMEN -->
+<div class="page active" id="page-resumen">
+
+  <div class="criterio-box">
+    <h2>¿Cómo se determinó la prioridad para el turnero?</h2>
+    <p>El objetivo fue identificar las clínicas donde instalar el turnero tendría el <strong>mayor impacto posible</strong>: aquellas que combinan alta inconformidad de pacientes <em>y</em> alto flujo de atención. Para lograrlo se usó un <strong>puntaje combinado</strong> con dos métricas del archivo:</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h4>Quejas por tiempo de espera</h4>
+        <p>Mide la <em>inconformidad real</em> del paciente. Una clínica con muchas quejas tiene un problema de experiencia documentado que el turnero puede reducir al informar el avance del turno.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h4>Número de estudios realizados</h4>
+        <p>Mide el <em>volumen operativo</em>. Una clínica con muchos estudios genera más esperas simultáneas, por lo que el turnero beneficia a más pacientes por día.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h4>Normalización 0 a 1</h4>
+        <p>Cada métrica se convierte a escala 0–1 para que ambas pesen <em>igual</em>, sin importar que los estudios sean números mucho más grandes que las quejas.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <h4>Puntaje combinado</h4>
+        <p>Se suman ambas métricas normalizadas. El máximo posible es 2.0 (líder en ambas). Las 70 clínicas con mayor puntaje son las prioritarias.</p>
+      </div>
+    </div>
+    <div class="formula">Puntaje = (Quejas − min) / (max − min)  +  (Estudios − min) / (max − min)</div>
+    <p style="font-size:12px;color:#718096;margin-top:6px">Este método garantiza que una clínica no llegue al top solo por tener muchos estudios (como Los Mochis, con pocos quejas) ni solo por tener muchas quejas (como Iztacalco La Viga, con volumen moderado). La combinación de ambas es lo que la coloca en alta prioridad.</p>
+    <div class="highlight-row">
+      <div class="hl"><strong>Coyoacán</strong><span>Puntaje más alto: 1.67 — líder en estudios (29,617) + alto en quejas (70)</span></div>
+      <div class="hl"><strong>Iztacalco La Viga</strong><span>Más quejas de toda la red (105) — prioridad crítica en experiencia</span></div>
+      <div class="hl"><strong>Top 70</strong><span>Concentran el 61% de todas las quejas y el 50% del volumen de la red</span></div>
+    </div>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi"><div class="kpi-label">Total clínicas en la red</div><div class="kpi-val">256</div><div class="kpi-sub">analizadas en este estudio</div></div>
+    <div class="kpi am"><div class="kpi-label">Clínicas prioritarias</div><div class="kpi-val">70</div><div class="kpi-sub">27% de la red, 61% de quejas</div></div>
+    <div class="kpi bl"><div class="kpi-label">Total quejas en la red</div><div class="kpi-val">4,115</div><div class="kpi-sub">2,509 en las top 70</div></div>
+    <div class="kpi re"><div class="kpi-label">Total estudios en la red</div><div class="kpi-val">1,997,526</div><div class="kpi-sub">997,137 en las top 70</div></div>
+  </div>
+
+  <div class="charts-2">
+    <div class="card">
+      <h3>Top 15 por quejas — Clínicas con más inconformidad</h3>
+      <div style="position:relative;height:280px"><canvas id="cQ" role="img" aria-label="Top 15 clínicas por quejas"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>Top 15 por estudios — Clínicas con mayor volumen</h3>
+      <div style="position:relative;height:280px"><canvas id="cE" role="img" aria-label="Top 15 clínicas por estudios"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card charts-1">
+    <h3>Mapa de prioridad — Quejas vs. Estudios (todas las 256 clínicas)</h3>
+    <p style="font-size:12px;color:#718096;margin-bottom:12px">Las clínicas en la zona superior-derecha combinan alto volumen y muchas quejas: son las de mayor prioridad para el turnero.</p>
+    <div style="position:relative;height:360px"><canvas id="cScatter" role="img" aria-label="Dispersión quejas vs estudios 256 clínicas"></canvas></div>
+  </div>
+</div>
+
+<!-- PAGE 2: GRAFICAS -->
+<div class="page" id="page-graficas">
+  <div class="kpi-row">
+    <div class="kpi"><div class="kpi-label">Prioridad 1 (pos. 1–20)</div><div class="kpi-val" id="kp1q">—</div><div class="kpi-sub">quejas acumuladas</div></div>
+    <div class="kpi am"><div class="kpi-label">Prioridad 2 (pos. 21–70)</div><div class="kpi-val" id="kp2q">—</div><div class="kpi-sub">quejas acumuladas</div></div>
+    <div class="kpi bl"><div class="kpi-label">Clínicas con 0 quejas</div><div class="kpi-val" id="kp0">—</div><div class="kpi-sub">sin incidencias registradas</div></div>
+    <div class="kpi re"><div class="kpi-label">Tasa máxima</div><div class="kpi-val">1.22%</div><div class="kpi-sub">Miguel Hidalgo Observatorio</div></div>
+  </div>
+  <div class="charts-2">
+    <div class="card">
+      <h3>Distribución de quejas por nivel de prioridad</h3>
+      <div style="position:relative;height:250px"><canvas id="cPie" role="img" aria-label="Pie de quejas por nivel"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>Concentración de estudios por nivel de prioridad</h3>
+      <div style="position:relative;height:250px"><canvas id="cPie2" role="img" aria-label="Pie de estudios por nivel"></canvas></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Tasa de quejas (%) — Top 30 clínicas con mayor tasa</h3>
+    <p style="font-size:12px;color:#718096;margin-bottom:12px">La tasa = quejas ÷ estudios. Una clínica puede tener pocas quejas absolutas pero alta tasa si atiende poco volumen.</p>
+    <div style="position:relative;height:340px"><canvas id="cTasa" role="img" aria-label="Tasa de quejas top 30"></canvas></div>
+  </div>
+</div>
+
+<!-- PAGE 3: TABLA -->
+<div class="page" id="page-tabla">
+  <div class="card">
+    <div class="table-controls">
+      <div class="search-wrap">
+        <input type="text" id="searchInput" placeholder="🔍  Buscar clínica..." oninput="applyFilters()">
+        <select id="tierFilter" onchange="applyFilters()">
+          <option value="">Todas las prioridades</option>
+          <option value="1">🔴 Prioridad 1 (1–20)</option>
+          <option value="2">🟠 Prioridad 2 (21–70)</option>
+          <option value="3">🟢 Prioridad 3 (71–150)</option>
+          <option value="4">🔵 Prioridad 4 (151–256)</option>
+        </select>
+        <select id="sortField" onchange="applyFilters()">
+          <option value="r">Ordenar: Puntaje combinado</option>
+          <option value="q">Ordenar: Quejas (mayor a menor)</option>
+          <option value="e">Ordenar: Estudios (mayor a menor)</option>
+          <option value="t">Ordenar: Tasa (mayor a menor)</option>
+        </select>
+      </div>
+      <span class="results-count" id="resultsCount"></span>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th style="text-align:center;width:40px">#</th>
+            <th>Clínica</th>
+            <th>Prioridad</th>
+            <th style="text-align:right">Quejas</th>
+            <th style="text-align:right">Estudios</th>
+            <th style="text-align:right">Tasa %</th>
+            <th style="text-align:right">Puntaje</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+    <div class="pag" id="pagination"></div>
+  </div>
+</div>
+
+<script>
+const allData = [
+  {r:1, n:'COYOACAN', q:70, e:29617, t:0.2364, s:1.6667},
+  {r:2, n:'QUERETARO', q:73, e:22663, t:0.3221, s:1.4548},
+  {r:3, n:'IZTACALCO LA VIGA', q:105, e:12435, t:0.8444, s:1.4059},
+  {r:4, n:'GUSTAVO A. MADERO', q:70, e:19171, t:0.3651, s:1.3055},
+  {r:5, n:'CUAUHTEMOC', q:77, e:15358, t:0.5014, s:1.2403},
+  {r:6, n:'RIO DE LOS REMEDIOS', q:77, e:15048, t:0.5117, s:1.2296},
+  {r:7, n:'TOLUCA', q:62, e:19004, t:0.3262, s:1.2235},
+  {r:8, n:'PUEBLA CAPU', q:78, e:14443, t:0.5401, s:1.2182},
+  {r:9, n:'TIJUANA', q:38, e:24558, t:0.1547, s:1.187},
+  {r:10, n:'LOS REYES-LA PAZ', q:58, e:19017, t:0.305, s:1.1859},
+  {r:11, n:'TECAMAC', q:59, e:17629, t:0.3347, s:1.1474},
+  {r:12, n:'IZTAPALAPA', q:63, e:15000, t:0.42, s:1.0946},
+  {r:13, n:'TLALNEPANTLA', q:62, e:15021, t:0.4128, s:1.0858},
+  {r:14, n:'TLALPAN', q:47, e:18440, t:0.2549, s:1.0611},
+  {r:15, n:'CIUDAD AZTECA', q:29, e:22028, t:0.1317, s:1.0138},
+  {r:16, n:'AZCAPOTZALCO', q:72, e:9898, t:0.7274, s:1.0039},
+  {r:17, n:'NEZAHUALCOYOTL', q:46, e:16329, t:0.2817, s:0.9786},
+  {r:18, n:'LEON', q:40, e:17959, t:0.2227, s:0.9778},
+  {r:19, n:'ECATEPEC', q:38, e:17805, t:0.2134, s:0.9535},
+  {r:20, n:'ZAPOPAN CENTRO', q:33, e:16881, t:0.1955, s:0.8739},
+  {r:21, n:'CHALCO', q:38, e:15237, t:0.2494, s:0.8647},
+  {r:22, n:'GUADALAJARA TETLAN', q:36, e:15642, t:0.2301, s:0.8596},
+  {r:23, n:'SALTILLO', q:28, e:17193, t:0.1629, s:0.8371},
+  {r:24, n:'ZAPOPAN LAS AGUILAS', q:39, e:13963, t:0.2793, s:0.8301},
+  {r:25, n:'MEXICALI', q:47, e:11476, t:0.4096, s:0.8203},
+  {r:26, n:'LOS MOCHIS', q:4, e:22265, t:0.018, s:0.7839},
+  {r:27, n:'MORELIA', q:22, e:17218, t:0.1278, s:0.7808},
+  {r:28, n:'SAN LUIS POTOSI', q:22, e:17003, t:0.1294, s:0.7734},
+  {r:29, n:'MONTERREY LINCOLN', q:48, e:9772, t:0.4912, s:0.7709},
+  {r:30, n:'DURANGO', q:36, e:13010, t:0.2767, s:0.7686},
+  {r:31, n:'NAUCALPAN', q:39, e:11931, t:0.3269, s:0.7599},
+  {r:32, n:'CHIMALHUACAN', q:39, e:11800, t:0.3305, s:0.7553},
+  {r:33, n:'COACALCO', q:36, e:12426, t:0.2897, s:0.7484},
+  {r:34, n:'IXTAPALUCA', q:43, e:10370, t:0.4147, s:0.744},
+  {r:35, n:'MORELIA 3 PUENTES', q:42, e:10564, t:0.3976, s:0.7412},
+  {r:36, n:'AGUASCALIENTES', q:40, e:10939, t:0.3657, s:0.7351},
+  {r:37, n:'OBREGON', q:23, e:15538, t:0.148, s:0.7322},
+  {r:38, n:'ATIZAPAN DE ZARAGOZA', q:25, e:14953, t:0.1672, s:0.731},
+  {r:39, n:'VILLAHERMOSA TABASCO', q:20, e:15969, t:0.1252, s:0.7186},
+  {r:40, n:'COYOACAN DIVISION NORTE', q:31, e:12929, t:0.2398, s:0.7182},
+  {r:41, n:'PUEBLA', q:10, e:18115, t:0.0552, s:0.6975},
+  {r:42, n:'PACHUCA', q:24, e:14220, t:0.1688, s:0.6962},
+  {r:43, n:'CANCUN', q:31, e:12246, t:0.2531, s:0.6946},
+  {r:44, n:'MIGUEL HIDALGO', q:33, e:11429, t:0.2887, s:0.6854},
+  {r:45, n:'TIJUANA CENTRO', q:24, e:13873, t:0.173, s:0.6842},
+  {r:46, n:'CUAUTITLAN', q:23, e:14092, t:0.1632, s:0.6822},
+  {r:47, n:'CELAYA', q:40, e:9083, t:0.4404, s:0.6709},
+  {r:48, n:'CUERNAVACA', q:26, e:11960, t:0.2174, s:0.6371},
+  {r:49, n:'PUEBLA XILOTZINGO', q:14, e:14161, t:0.0989, s:0.5989},
+  {r:50, n:'BENITO JUAREZ', q:39, e:7181, t:0.5431, s:0.5956},
+  {r:51, n:'METEPEC', q:27, e:10484, t:0.2575, s:0.5956},
+  {r:52, n:'XALAPA', q:2, e:17255, t:0.0116, s:0.5916},
+  {r:53, n:'GUADALAJARA CIRCUNVALACION', q:25, e:10753, t:0.2325, s:0.5858},
+  {r:54, n:'TIJUANA CUCAPAH', q:30, e:9276, t:0.3234, s:0.5824},
+  {r:55, n:'MAZATLAN', q:8, e:15305, t:0.0523, s:0.5813},
+  {r:56, n:'REYNOSA', q:28, e:9765, t:0.2867, s:0.5802},
+  {r:57, n:'CULIACAN', q:6, e:15736, t:0.0381, s:0.5772},
+  {r:58, n:'TLAJOMULCO', q:10, e:14437, t:0.0693, s:0.5703},
+  {r:59, n:'JUAREZ', q:17, e:12387, t:0.1372, s:0.5661},
+  {r:60, n:'APODACA PLAZA CITADINA', q:40, e:6040, t:0.6623, s:0.5657},
+  {r:61, n:'ACAPULCO', q:23, e:10720, t:0.2146, s:0.5656},
+  {r:62, n:'GUADALUPE', q:23, e:10711, t:0.2147, s:0.5653},
+  {r:63, n:'IRAPUATO', q:16, e:12380, t:0.1292, s:0.5564},
+  {r:64, n:'CULIACAN COLEGIO MILITAR', q:19, e:11425, t:0.1663, s:0.5519},
+  {r:65, n:'SAN NICOLAS DE LOS GARZA', q:18, e:11618, t:0.1549, s:0.5491},
+  {r:66, n:'LEON OBELISCO', q:25, e:9587, t:0.2608, s:0.5455},
+  {r:67, n:'TUXTLA GUTIERREZ', q:15, e:12260, t:0.1223, s:0.5427},
+  {r:68, n:'TONALA TONALTECAS', q:29, e:8273, t:0.3505, s:0.5382},
+  {r:69, n:'GUADALAJARA AMERICAS', q:20, e:10557, t:0.1894, s:0.5314},
+  {r:70, n:'MERIDA', q:9, e:13306, t:0.0676, s:0.5217},
+  {r:71, n:'MONTERREY LA FE', q:16, e:11358, t:0.1409, s:0.521},
+  {r:72, n:'IZTAPALAPA CENTRO', q:34, e:6372, t:0.5336, s:0.52},
+  {r:73, n:'SAN ANDRES CHOLULA', q:30, e:7473, t:0.4014, s:0.52},
+  {r:74, n:'QUERETARO PIE DE LA CUESTA', q:17, e:10397, t:0.1635, s:0.4973},
+  {r:75, n:'CUAJIMALPA', q:17, e:10223, t:0.1663, s:0.4913},
+  {r:76, n:'TEPIC', q:14, e:10919, t:0.1282, s:0.4868},
+  {r:77, n:'MIGUEL HIDALGO OBSERVATORIO', q:41, e:3373, t:1.2155, s:0.483},
+  {r:78, n:'BOCA DEL RIO', q:26, e:7419, t:0.3505, s:0.4801},
+  {r:79, n:'OAXACA', q:4, e:13357, t:0.0299, s:0.4759},
+  {r:80, n:'HERMOSILLO', q:12, e:11103, t:0.1081, s:0.4741},
+  {r:81, n:'TOLUCA CENTRAL', q:11, e:11306, t:0.0973, s:0.4716},
+  {r:82, n:'VALLE DE GUADALUPE', q:30, e:6004, t:0.4997, s:0.4692},
+  {r:83, n:'ESCOBEDO PLAZA LOS GIRASOLES', q:34, e:4732, t:0.7185, s:0.4633},
+  {r:84, n:'MEXICALI PEDREGAL', q:7, e:12088, t:0.0579, s:0.4605},
+  {r:85, n:'TLAXCALA', q:18, e:8973, t:0.2006, s:0.4576},
+  {r:86, n:'PUEBLA EL PORVENIR', q:11, e:10367, t:0.1061, s:0.4391},
+  {r:87, n:'CIUDAD JUAREZ GOMEZ MORIN', q:22, e:7269, t:0.3027, s:0.4368},
+  {r:88, n:'MONTERREY', q:10, e:10512, t:0.0951, s:0.4346},
+  {r:89, n:'GUSTAVO A. MADERO PLAZA MISTERIOS', q:13, e:9576, t:0.1358, s:0.4308},
+  {r:90, n:'ACAPULCO RENACIMIENTO', q:8, e:10909, t:0.0733, s:0.4293},
+  {r:91, n:'GUADALAJARA SAN JUAN', q:15, e:8968, t:0.1673, s:0.4289},
+  {r:92, n:'ENSENADA', q:15, e:8947, t:0.1677, s:0.4281},
+  {r:93, n:'TEXCOCO', q:20, e:7344, t:0.2723, s:0.4203},
+  {r:94, n:'GOMEZ PALACIO', q:9, e:10330, t:0.0871, s:0.4188},
+  {r:95, n:'CULIACAN CAÑADAS', q:6, e:11054, t:0.0543, s:0.4153},
+  {r:96, n:'AGUASCALIENTES UNIVERSIDAD', q:10, e:9767, t:0.1024, s:0.4089},
+  {r:97, n:'TAPACHULA', q:8, e:10161, t:0.0787, s:0.4034},
+  {r:98, n:'CULHUACAN', q:21, e:6521, t:0.322, s:0.4014},
+  {r:99, n:'NUEVO LAREDO', q:21, e:6304, t:0.3331, s:0.3939},
+  {r:100, n:'VERACRUZ', q:3, e:11233, t:0.0267, s:0.3929},
+  {r:101, n:'CULIACAN UNIVERSITARIOS', q:12, e:8729, t:0.1375, s:0.392},
+  {r:102, n:'SALAMANCA', q:17, e:6990, t:0.2432, s:0.3795},
+  {r:103, n:'HUIXQUILUCAN', q:22, e:5553, t:0.3962, s:0.3774},
+  {r:104, n:'SANTA CATARINA', q:13, e:7969, t:0.1631, s:0.3753},
+  {r:105, n:'TAMPICO', q:8, e:9261, t:0.0864, s:0.3723},
+  {r:106, n:'TORREON DIAGONAL REFORMA', q:24, e:4748, t:0.5055, s:0.3686},
+  {r:107, n:'XOCHIMILCO', q:23, e:4972, t:0.4626, s:0.3669},
+  {r:108, n:'GUASAVE', q:2, e:10665, t:0.0188, s:0.3637},
+  {r:109, n:'MATAMOROS', q:21, e:5371, t:0.391, s:0.3616},
+  {r:110, n:'TUXTLA GUTIERREZ 5TA NORTE', q:10, e:8362, t:0.1196, s:0.3603},
+  {r:111, n:'PUEBLA MUNICIPIO LIBRE', q:24, e:4458, t:0.5384, s:0.3586},
+  {r:112, n:'COATZACOALCOS', q:13, e:7309, t:0.1779, s:0.3524},
+  {r:113, n:'TORREON', q:12, e:7565, t:0.1586, s:0.3518},
+  {r:114, n:'IZTAPALAPA LEYES DE REFORMA', q:19, e:5625, t:0.3378, s:0.3514},
+  {r:115, n:'ALVARO OBREGON', q:9, e:8227, t:0.1094, s:0.3461},
+  {r:116, n:'MERIDA CANEK', q:4, e:9554, t:0.0419, s:0.3444},
+  {r:117, n:'CUAUHTEMOC INSURGENTES', q:24, e:3909, t:0.614, s:0.3396},
+  {r:118, n:'ACAPULCO EL COLOSO', q:5, e:9015, t:0.0555, s:0.3352},
+  {r:119, n:'CHIHUAHUA', q:12, e:7049, t:0.1702, s:0.3339},
+  {r:120, n:'LEON HIDALGO', q:9, e:7850, t:0.1146, s:0.3331},
+  {r:121, n:'ECATEPEC SUPER PLAZA', q:20, e:4725, t:0.4233, s:0.3298},
+  {r:122, n:'PLAYA DEL CARMEN', q:8, e:7991, t:0.1001, s:0.3284},
+  {r:123, n:'CIUDAD VICTORIA', q:19, e:4748, t:0.4002, s:0.321},
+  {r:124, n:'MERIDA ALTABRISA', q:9, e:7394, t:0.1217, s:0.3173},
+  {r:125, n:'VILLAHERMOSA GREGORIO MENDEZ', q:17, e:5151, t:0.33, s:0.3159},
+  {r:126, n:'PUERTO VALLARTA', q:10, e:7062, t:0.1416, s:0.3153},
+  {r:127, n:'CORDOBA', q:13, e:6203, t:0.2096, s:0.3142},
+  {r:128, n:'SAN MARTIN TEXMELUCAN', q:6, e:7818, t:0.0767, s:0.3034},
+  {r:129, n:'PUEBLA SAN SEBASTIAN', q:9, e:6888, t:0.1307, s:0.2998},
+  {r:130, n:'URUAPAN', q:12, e:6035, t:0.1988, s:0.2989},
+  {r:131, n:'TULTITLAN', q:10, e:6571, t:0.1522, s:0.2984},
+  {r:132, n:'CHIHUAHUA NUEVA ESPAÑA', q:12, e:5907, t:0.2031, s:0.2944},
+  {r:133, n:'CIUDAD JUAREZ CLOUTHIER', q:13, e:5579, t:0.233, s:0.2926},
+  {r:134, n:'MEXICALI LAZARO CARDENAS', q:11, e:6068, t:0.1813, s:0.2905},
+  {r:135, n:'IZTAPALAPA AZTAHUACAN', q:16, e:4683, t:0.3417, s:0.2902},
+  {r:136, n:'QUERETARO SUR', q:10, e:6313, t:0.1584, s:0.2894},
+  {r:137, n:'TULTITLAN SAN PABLO DE SALINAS', q:18, e:4079, t:0.4413, s:0.2884},
+  {r:138, n:'ECATEPEC LOPEZ PORTILLO', q:11, e:5855, t:0.1879, s:0.2831},
+  {r:139, n:'LEON TORRES LANDA', q:10, e:6016, t:0.1662, s:0.2792},
+  {r:140, n:'TIJUANA OTAY', q:5, e:7271, t:0.0688, s:0.2749},
+  {r:141, n:'CHIHUAHUA DEPORTISTAS', q:7, e:6710, t:0.1043, s:0.2746},
+  {r:142, n:'SANTA CATARINA CLOUTHIER', q:18, e:3641, t:0.4944, s:0.2732},
+  {r:143, n:'TIJUANA MATAMOROS', q:10, e:5792, t:0.1727, s:0.2714},
+  {r:144, n:'NICOLAS ROMERO', q:13, e:4936, t:0.2634, s:0.2704},
+  {r:145, n:'SAN LUIS POTOSI DE GALVEZ', q:9, e:6021, t:0.1495, s:0.2698},
+  {r:146, n:'ALVARO OBREGON PORTALES', q:7, e:6537, t:0.1071, s:0.2686},
+  {r:147, n:'CHICOLOAPAN', q:10, e:5644, t:0.1772, s:0.2663},
+  {r:148, n:'SAN PEDRO CHOLULA', q:10, e:5580, t:0.1792, s:0.2641},
+  {r:149, n:'VERACRUZ NORTE', q:11, e:5298, t:0.2076, s:0.2639},
+  {r:150, n:'TECAMAC CENTRO', q:11, e:5099, t:0.2157, s:0.257},
+  {r:151, n:'MONTERREY SAN BERNABE', q:11, e:4950, t:0.2222, s:0.2518},
+  {r:152, n:'NAVOJOA', q:8, e:5729, t:0.1396, s:0.2502},
+  {r:153, n:'CUERNAVACA PLAN DE AYALA', q:6, e:6267, t:0.0957, s:0.2497},
+  {r:154, n:'BENITO JUAREZ NARVARTE', q:15, e:3780, t:0.3968, s:0.2495},
+  {r:155, n:'CUAUTITLAN IZCALLI', q:5, e:6531, t:0.0766, s:0.2493},
+  {r:156, n:'XALAPA LAZARO CARDENAS', q:4, e:6754, t:0.0592, s:0.2475},
+  {r:157, n:'NOGALES', q:7, e:5824, t:0.1202, s:0.2439},
+  {r:158, n:'GUADALAJARA CRISTOBAL COLON', q:3, e:6920, t:0.0434, s:0.2438},
+  {r:159, n:'LERMA DE VILLADA', q:5, e:6354, t:0.0787, s:0.2432},
+  {r:160, n:'CIUDAD JUAREZ', q:7, e:5779, t:0.1211, s:0.2424},
+  {r:161, n:'MONTERREY LAZARO CARDENAS', q:14, e:3762, t:0.3721, s:0.2393},
+  {r:162, n:'CUAUTLA', q:13, e:4004, t:0.3247, s:0.2382},
+  {r:163, n:'SILAO', q:13, e:3948, t:0.3293, s:0.2362},
+  {r:164, n:'GUSTAVO A. MADERO TICOMAN', q:8, e:5264, t:0.152, s:0.2341},
+  {r:165, n:'GUSTAVO A. MADERO CUAUTEPEC', q:5, e:6090, t:0.0821, s:0.2341},
+  {r:166, n:'APODACA PLAZA HUINALA', q:13, e:3829, t:0.3395, s:0.2321},
+  {r:167, n:'COLIMA', q:2, e:6753, t:0.0296, s:0.2285},
+  {r:168, n:'SAN NICOLAS PLAZA OPCION', q:8, e:5096, t:0.157, s:0.2283},
+  {r:169, n:'SAN JUAN DEL RIO', q:6, e:5562, t:0.1079, s:0.2254},
+  {r:170, n:'POZA RICA', q:2, e:6451, t:0.031, s:0.218},
+  {r:171, n:'CULIACAN LAS TORRES', q:6, e:5298, t:0.1133, s:0.2162},
+  {r:172, n:'HERMOSILLO MORELOS', q:3, e:6086, t:0.0493, s:0.2149},
+  {r:173, n:'SAN LUIS POTOSI MUÑOZ', q:5, e:5529, t:0.0904, s:0.2147},
+  {r:174, n:'CIUDAD JUAREZ TRONCOSO', q:13, e:3224, t:0.4032, s:0.2112},
+  {r:175, n:'AGUASCALIENTES OJO CALIENTE', q:15, e:2673, t:0.5612, s:0.2112},
+  {r:176, n:'CORREGIDORA EL PUEBLITO', q:13, e:3208, t:0.4052, s:0.2106},
+  {r:177, n:'PUEBLA AZALEAS', q:5, e:5409, t:0.0924, s:0.2106},
+  {r:178, n:'SALTILLO NORTE', q:12, e:3347, t:0.3585, s:0.2059},
+  {r:179, n:'ZACATECAS', q:6, e:4942, t:0.1214, s:0.2039},
+  {r:180, n:'SAN CRISTOBAL DE LAS CASAS', q:4, e:5428, t:0.0737, s:0.2017},
+  {r:181, n:'CANCUN LOPEZ PORTILLO', q:6, e:4838, t:0.124, s:0.2003},
+  {r:182, n:'VALLE DE CHALCO TEZOZOMOC', q:4, e:5368, t:0.0745, s:0.1996},
+  {r:183, n:'TLAQUEPAQUE', q:0, e:6445, t:0.0, s:0.1988},
+  {r:184, n:'TLAJOMULCO CENTRO', q:6, e:4716, t:0.1272, s:0.1961},
+  {r:185, n:'APODACA SAN MIGUEL', q:8, e:4054, t:0.1973, s:0.1923},
+  {r:186, n:'SAN LUIS RIO COLORADO', q:10, e:3463, t:0.2888, s:0.1909},
+  {r:187, n:'TLALNEPANTLA SANTA MONICA', q:6, e:4501, t:0.1333, s:0.1887},
+  {r:188, n:'GUADALUPE CENTRO', q:11, e:3083, t:0.3568, s:0.1873},
+  {r:189, n:'NEZAHUALCOYOTL GUSTAVO BAZ', q:12, e:2776, t:0.4323, s:0.1862},
+  {r:190, n:'CARDENAS', q:1, e:5780, t:0.0173, s:0.1853},
+  {r:191, n:'GUADALAJARA MARIANO OTERO', q:10, e:3276, t:0.3053, s:0.1844},
+  {r:192, n:'LEON SAN JUAN BOSCO', q:3, e:5149, t:0.0583, s:0.1825},
+  {r:193, n:'ZAMORA', q:3, e:5149, t:0.0583, s:0.1825},
+  {r:194, n:'GUAMUCHIL CENTRO', q:5, e:4408, t:0.1134, s:0.1759},
+  {r:195, n:'HERMOSILLO PALO VERDE', q:1, e:5442, t:0.0184, s:0.1736},
+  {r:196, n:'LA PAZ', q:8, e:3486, t:0.2295, s:0.1726},
+  {r:197, n:'TEHUACAN', q:4, e:4384, t:0.0912, s:0.1656},
+  {r:198, n:'PUEBLA ANGELOPOLIS', q:9, e:3005, t:0.2995, s:0.1655},
+  {r:199, n:'VERACRUZ VALENTE DIAZ', q:1, e:5192, t:0.0193, s:0.165},
+  {r:200, n:'EL SALTO', q:4, e:4325, t:0.0925, s:0.1635},
+  {r:201, n:'GUADALUPE AV JUAREZ', q:4, e:4309, t:0.0928, s:0.163},
+  {r:202, n:'IXTAPALUCA PATIO AYOTLA', q:5, e:3799, t:0.1316, s:0.1549},
+  {r:203, n:'QUERETARO AV DE LA LUZ', q:2, e:4554, t:0.0439, s:0.1524},
+  {r:204, n:'SAN NICOLAS SANTO DOMINGO', q:6, e:3441, t:0.1744, s:0.152},
+  {r:205, n:'TLAQUEPAQUE NIÑOS HEROES', q:9, e:2542, t:0.3541, s:0.1495},
+  {r:206, n:'DURANGO DOMINGO ARRIETA', q:5, e:3616, t:0.1383, s:0.1486},
+  {r:207, n:'MANZANILLO', q:3, e:4148, t:0.0723, s:0.1479},
+  {r:208, n:'CULIACAN LA CONQUISTA', q:6, e:3320, t:0.1807, s:0.1478},
+  {r:209, n:'MONTERREY CENTRIKA', q:7, e:3007, t:0.2328, s:0.1465},
+  {r:210, n:'LOS MOCHIS ROSALES', q:3, e:4039, t:0.0743, s:0.1441},
+  {r:211, n:'CELAYA TECNOLOGICO', q:5, e:3471, t:0.1441, s:0.1435},
+  {r:212, n:'NAVOLATO', q:1, e:4382, t:0.0228, s:0.1369},
+  {r:213, n:'DURANGO JUVENTUD', q:3, e:3829, t:0.0783, s:0.1369},
+  {r:214, n:'CIUDAD VALLES', q:3, e:3741, t:0.0802, s:0.1338},
+  {r:215, n:'GARCIA', q:4, e:3373, t:0.1186, s:0.1306},
+  {r:216, n:'GUADALAJARA WASHINGTON', q:4, e:3216, t:0.1244, s:0.1252},
+  {r:217, n:'PUEBLA AZCARATE', q:7, e:2306, t:0.3036, s:0.1223},
+  {r:218, n:'TORREON PLAZA TRIANA', q:1, e:3955, t:0.0253, s:0.1222},
+  {r:219, n:'TLALNEPANTLA REYES HEROLES', q:5, e:2852, t:0.1753, s:0.1221},
+  {r:220, n:'LEON CAMPESTRE', q:3, e:3314, t:0.0905, s:0.1191},
+  {r:221, n:'ROSARITO', q:0, e:4104, t:0.0, s:0.1178},
+  {r:222, n:'LEON FRANCISCO VILLA', q:3, e:3173, t:0.0945, s:0.1142},
+  {r:223, n:'CADEREYTA JIMENEZ', q:1, e:3675, t:0.0272, s:0.1125},
+  {r:224, n:'LEON SAN PEDRO', q:2, e:3289, t:0.0608, s:0.1087},
+  {r:225, n:'ECATEPEC BICENTENARIO', q:2, e:3288, t:0.0608, s:0.1086},
+  {r:226, n:'DELICIAS', q:1, e:3492, t:0.0286, s:0.1062},
+  {r:227, n:'ENSENADA LOMA DORADA', q:0, e:3766, t:0.0, s:0.1061},
+  {r:228, n:'TLALNEPANTLA GUSTAVO BAZ', q:3, e:2937, t:0.1021, s:0.106},
+  {r:229, n:'TIJUANA CASA BLANCA', q:1, e:3383, t:0.0296, s:0.1024},
+  {r:230, n:'ACAPULCO DIAMANTE', q:1, e:3362, t:0.0297, s:0.1017},
+  {r:231, n:'BOCA DEL RIO DIAZ MIRON', q:3, e:2802, t:0.1071, s:0.1014},
+  {r:232, n:'TAMPICO EJERCITO MEXICANO', q:3, e:2755, t:0.1089, s:0.0997},
+  {r:233, n:'LOS MOCHIS LOS ALAMOS', q:0, e:3564, t:0.0, s:0.0991},
+  {r:234, n:'SAN LUIS POTOSI ACCESO NORTE', q:3, e:2712, t:0.1106, s:0.0982},
+  {r:235, n:'HERMOSILLO SOLIDARIDAD', q:2, e:2941, t:0.068, s:0.0966},
+  {r:236, n:'ZACATECAS ADOLFO LOPEZ MATEOS', q:2, e:2879, t:0.0695, s:0.0945},
+  {r:237, n:'MERIDA BUENA VISTA', q:1, e:2924, t:0.0342, s:0.0865},
+  {r:238, n:'CULIACAN NAKAYAMA', q:1, e:2917, t:0.0343, s:0.0863},
+  {r:239, n:'OAXACA AV UNIVERSIDAD', q:0, e:3037, t:0.0, s:0.0809},
+  {r:240, n:'QUERETARO REVOLUCION', q:2, e:2427, t:0.0824, s:0.0789},
+  {r:241, n:'NAUCALPAN SAN MATEO', q:1, e:2680, t:0.0373, s:0.0781},
+  {r:242, n:'ZAPOTLANEJO', q:0, e:2652, t:0.0, s:0.0676},
+  {r:243, n:'NAUCALPAN SATELITE', q:1, e:2301, t:0.0435, s:0.065},
+  {r:244, n:'MOROLEON', q:0, e:2550, t:0.0, s:0.0641},
+  {r:245, n:'SAN FRANCISCO DEL RINCON', q:2, e:1954, t:0.1024, s:0.0625},
+  {r:246, n:'CAMPECHE', q:2, e:1798, t:0.1112, s:0.0571},
+  {r:247, n:'CIUDAD JUAREZ ZARAGOZA', q:2, e:1746, t:0.1145, s:0.0553},
+  {r:248, n:'MORELIA PASEO DE LA REPUBLICA', q:0, e:1945, t:0.0, s:0.0432},
+  {r:249, n:'QUERETARO EJERCITO REPUBLICANO', q:0, e:1692, t:0.0, s:0.0344},
+  {r:250, n:'MONTERREY SOLIDARIDAD', q:0, e:1539, t:0.0, s:0.0291},
+  {r:251, n:'TIJUANA DIAZ ORDAZ', q:0, e:1340, t:0.0, s:0.0222},
+  {r:252, n:'TECAMAC BELLA MEXIQUENSE', q:0, e:1267, t:0.0, s:0.0197},
+  {r:253, n:'AGUASCALIENTES GANDHI', q:1, e:939, t:0.1065, s:0.0179},
+  {r:254, n:'VISTA HERMOSA', q:0, e:1039, t:0.0, s:0.0118},
+  {r:255, n:'XALAPA REVOLUCION', q:0, e:823, t:0.0, s:0.0044},
+  {r:256, n:'MONCLOVA CENTRO', q:0, e:697, t:0.0, s:0.0}
+];
+
+const maxQ=Math.max(...allData.map(d=>d.q));
+const maxE=Math.max(...allData.map(d=>d.e));
+
+function getTier(r){
+  if(r<=20) return {cls:'tier-1',label:'🔴 Prioridad 1'};
+  if(r<=70) return {cls:'tier-2',label:'🟠 Prioridad 2'};
+  if(r<=150) return {cls:'tier-3',label:'🟢 Prioridad 3'};
+  return {cls:'tier-4',label:'🔵 Prioridad 4'};
+}
+
+// KPI page2
+const p1q=allData.filter(d=>d.r<=20).reduce((a,d)=>a+d.q,0);
+const p2q=allData.filter(d=>d.r>20&&d.r<=70).reduce((a,d)=>a+d.q,0);
+const p0=allData.filter(d=>d.q===0).length;
+document.getElementById('kp1q').textContent=p1q.toLocaleString('es-MX');
+document.getElementById('kp2q').textContent=p2q.toLocaleString('es-MX');
+document.getElementById('kp0').textContent=p0;
+
+// PAGINATION
+let currentPage=1, filteredData=[...allData];
+const PER_PAGE=30;
+
+function applyFilters(){
+  const q=document.getElementById('searchInput').value.toLowerCase();
+  const tier=document.getElementById('tierFilter').value;
+  const sort=document.getElementById('sortField').value;
+  filteredData=[...allData].filter(d=>{
+    const matchName=d.n.toLowerCase().includes(q);
+    const matchTier=!tier||(tier==='1'&&d.r<=20)||(tier==='2'&&d.r>20&&d.r<=70)||(tier==='3'&&d.r>70&&d.r<=150)||(tier==='4'&&d.r>150);
+    return matchName&&matchTier;
+  });
+  if(sort==='q') filteredData.sort((a,b)=>b.q-a.q);
+  else if(sort==='e') filteredData.sort((a,b)=>b.e-a.e);
+  else if(sort==='t') filteredData.sort((a,b)=>b.t-a.t);
+  currentPage=1;
+  renderTable();
+}
+
+function renderTable(){
+  const start=(currentPage-1)*PER_PAGE, end=start+PER_PAGE;
+  const rows=filteredData.slice(start,end);
+  const tb=document.getElementById('tableBody');
+  tb.innerHTML=rows.map(d=>{
+    const t=getTier(d.r);
+    return `<tr>
+      <td class="rank">${d.r}</td>
+      <td class="name">${d.n}</td>
+      <td><span class="tier ${t.cls}">${t.label}</span></td>
+      <td class="num"><div class="bar-inline"><span>${d.q}</span><div class="bar-bg"><div class="bar-fill bg-amber" style="width:${Math.round(d.q/maxQ*100)}%"></div></div></div></td>
+      <td class="num"><div class="bar-inline"><span>${d.e.toLocaleString('es-MX')}</span><div class="bar-bg"><div class="bar-fill bg-green" style="width:${Math.round(d.e/maxE*100)}%"></div></div></div></td>
+      <td class="num">${d.t.toFixed(2)}%</td>
+      <td class="num"><span class="pill">${d.s.toFixed(3)}</span></td>
+    </tr>`;
+  }).join('');
+  const total=filteredData.length;
+  document.getElementById('resultsCount').textContent=`Mostrando ${Math.min(end,total)} de ${total} clínicas`;
+  renderPagination(total);
+}
+
+function renderPagination(total){
+  const pages=Math.ceil(total/PER_PAGE);
+  const p=document.getElementById('pagination');
+  if(pages<=1){p.innerHTML='';return;}
+  let html=`<button onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹ Anterior</button>`;
+  const range=[];
+  for(let i=1;i<=pages;i++){
+    if(i===1||i===pages||Math.abs(i-currentPage)<=2) range.push(i);
+    else if(range[range.length-1]!=='…') range.push('…');
+  }
+  range.forEach(i=>{
+    if(i==='…') html+=`<span class="pag-info">…</span>`;
+    else html+=`<button onclick="goPage(${i})" class="${i===currentPage?'active':''}">${i}</button>`;
+  });
+  html+=`<button onclick="goPage(${currentPage+1})" ${currentPage===pages?'disabled':''}>Siguiente ›</button>`;
+  p.innerHTML=html;
+}
+function goPage(p){currentPage=p;renderTable();document.getElementById('page-tabla').scrollIntoView({behavior:'smooth'});}
+
+applyFilters();
+
+// TABS
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// CHARTS
+// Top 15 quejas
+const tq=[...allData].sort((a,b)=>b.q-a.q).slice(0,15);
+new Chart(document.getElementById('cQ'),{
+  type:'bar',data:{labels:tq.map(d=>d.n),datasets:[{data:tq.map(d=>d.q),backgroundColor:'#EFB337',borderRadius:3,label:'Quejas'}]},
+  options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.raw+' quejas'}}},
+    scales:{x:{grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#718096',font:{size:10}}},y:{grid:{display:false},ticks:{color:'#2d3748',font:{size:10}}}}}
+});
+// Top 15 estudios
+const te=[...allData].sort((a,b)=>b.e-a.e).slice(0,15);
+new Chart(document.getElementById('cE'),{
+  type:'bar',data:{labels:te.map(d=>d.n),datasets:[{data:te.map(d=>d.e),backgroundColor:'#139861',borderRadius:3,label:'Estudios'}]},
+  options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.raw.toLocaleString('es-MX')+' estudios'}}},
+    scales:{x:{grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#718096',font:{size:10}}},y:{grid:{display:false},ticks:{color:'#2d3748',font:{size:10}}}}}
+});
+// Scatter
+new Chart(document.getElementById('cScatter'),{
+  type:'scatter',data:{datasets:[
+    {label:'Prioridad 1 (1–20)',data:allData.filter(d=>d.r<=20).map(d=>({x:d.e,y:d.q,label:d.n})),backgroundColor:'rgba(220,38,38,.8)',pointRadius:6},
+    {label:'Prioridad 2 (21–70)',data:allData.filter(d=>d.r>20&&d.r<=70).map(d=>({x:d.e,y:d.q,label:d.n})),backgroundColor:'rgba(239,179,55,.8)',pointRadius:5},
+    {label:'Prioridad 3 (71–150)',data:allData.filter(d=>d.r>70&&d.r<=150).map(d=>({x:d.e,y:d.q,label:d.n})),backgroundColor:'rgba(19,152,97,.7)',pointRadius:4},
+    {label:'Prioridad 4 (151–256)',data:allData.filter(d=>d.r>150).map(d=>({x:d.e,y:d.q,label:d.n})),backgroundColor:'rgba(148,163,184,.6)',pointRadius:3},
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:10,padding:12}},
+      tooltip:{callbacks:{label:c=>`${c.raw.label}: ${c.raw.y} quejas / ${c.raw.x.toLocaleString('es-MX')} estudios`}}},
+    scales:{x:{title:{display:true,text:'Estudios realizados',font:{size:11}},grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#718096'}},
+      y:{title:{display:true,text:'Quejas tiempo de espera',font:{size:11}},grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#718096'}}}}
+});
+// Pie quejas
+const pLevels=['P1 (1–20)','P2 (21–70)','P3 (71–150)','P4 (151–256)'];
+const pQvals=[allData.filter(d=>d.r<=20).reduce((a,d)=>a+d.q,0),allData.filter(d=>d.r>20&&d.r<=70).reduce((a,d)=>a+d.q,0),allData.filter(d=>d.r>70&&d.r<=150).reduce((a,d)=>a+d.q,0),allData.filter(d=>d.r>150).reduce((a,d)=>a+d.q,0)];
+new Chart(document.getElementById('cPie'),{type:'doughnut',data:{labels:pLevels,datasets:[{data:pQvals,backgroundColor:['#dc2626','#EFB337','#139861','#94a3b8'],borderWidth:2,borderColor:'#fff'}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:10}},tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw.toLocaleString('es-MX')} quejas (${Math.round(c.raw/4115*100)}%)`}}}}
+});
+const pEvals=[allData.filter(d=>d.r<=20).reduce((a,d)=>a+d.e,0),allData.filter(d=>d.r>20&&d.r<=70).reduce((a,d)=>a+d.e,0),allData.filter(d=>d.r>70&&d.r<=150).reduce((a,d)=>a+d.e,0),allData.filter(d=>d.r>150).reduce((a,d)=>a+d.e,0)];
+new Chart(document.getElementById('cPie2'),{type:'doughnut',data:{labels:pLevels,datasets:[{data:pEvals,backgroundColor:['#dc2626','#EFB337','#139861','#94a3b8'],borderWidth:2,borderColor:'#fff'}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:10}},tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw.toLocaleString('es-MX')} estudios (${Math.round(c.raw/1997526*100)}%)`}}}}
+});
+// Tasa top 30
+const tasa30=[...allData].sort((a,b)=>b.t-a.t).slice(0,30);
+new Chart(document.getElementById('cTasa'),{
+  type:'bar',data:{labels:tasa30.map(d=>d.n),datasets:[{data:tasa30.map(d=>d.t),backgroundColor:tasa30.map(d=>d.r<=20?'#dc2626':d.r<=70?'#EFB337':'#139861'),borderRadius:3,label:'Tasa %'}]},
+  options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.raw.toFixed(3)+'%'}}},
+    scales:{x:{grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#718096',font:{size:10},callback:v=>v+'%'}},y:{grid:{display:false},ticks:{color:'#2d3748',font:{size:10}}}}}
+});
+</script>
+</body>
+</html>
